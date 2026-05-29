@@ -22,7 +22,6 @@ BALL_RADIUS = 7
 START_SPEED = 300
 SPEED_GAIN = 1.018
 MAX_SPEED = 900
-RING_RENDER_SCALE = 3
 
 
 @dataclass
@@ -51,49 +50,35 @@ def draw_glow_circle(surface, color, pos, radius, alpha):
     surface.blit(glow, (pos[0] - size // 2, pos[1] - size // 2), special_flags=pygame.BLEND_ADD)
 
 
-def ring_point(radius, angle, scale):
-    center = CENTER * scale
-    return center + Vector2(math.cos(angle), math.sin(angle)) * radius * scale
-
-
-def draw_ring_to_layer(layer, ring, scale):
+def draw_ring(surface, ring):
     if not ring.alive and ring.alpha <= 0:
         return
+
+    # Faint full orbit guide, visible in the reference after pieces break.
+    guide = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    pygame.draw.circle(guide, (70, 70, 76, 38), CENTER, int(ring.radius), 1)
+    surface.blit(guide, (0, 0))
 
     gap_start = ring.gap_angle - ring.gap_width / 2
     gap_end = ring.gap_angle + ring.gap_width / 2
     segments = [(gap_end, gap_start + math.tau)]
     alpha = max(0, min(255, int(ring.alpha)))
     color = (*ring.color, alpha)
-
-    pygame.draw.circle(
-        layer,
-        (70, 70, 76, 38),
-        (int(CENTER.x * scale), int(CENTER.y * scale)),
-        int(ring.radius * scale),
-        scale,
-    )
+    layer = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
 
     for start, end in segments:
         points = []
-        steps = max(140, int((end - start) * ring.radius * scale / 2))
+        steps = max(20, int((end - start) * ring.radius / 4))
         for i in range(steps + 1):
             angle = start + (end - start) * i / steps
-            p = ring_point(ring.radius, angle, scale)
+            p = polar(ring.radius, angle)
             points.append((int(p.x), int(p.y)))
 
         if len(points) > 1:
-            pygame.draw.lines(layer, (*ring.color, min(74, alpha)), False, points, 10 * scale)
-            pygame.draw.lines(layer, color, False, points, 4 * scale)
+            pygame.draw.lines(layer, (*ring.color, min(80, alpha)), False, points, 10)
+            pygame.draw.lines(layer, color, False, points, 4)
 
-
-def draw_rings(surface, rings):
-    scale = RING_RENDER_SCALE
-    layer = pygame.Surface((WIDTH * scale, HEIGHT * scale), pygame.SRCALPHA)
-    for ring in rings:
-        draw_ring_to_layer(layer, ring, scale)
-    smooth = pygame.transform.smoothscale(layer, (WIDTH, HEIGHT))
-    surface.blit(smooth, (0, 0), special_flags=pygame.BLEND_ADD)
+    surface.blit(layer, (0, 0), special_flags=pygame.BLEND_ADD)
 
 
 def make_particles(pos, color, count, speed_min=45, speed_max=220):
@@ -302,7 +287,8 @@ def main():
             draw_glow_circle(screen, WHITE, item["pos"], 11 * item["life"], alpha)
         trail = [item for item in trail if item["life"] > 0]
 
-        draw_rings(screen, rings)
+        for ring in rings:
+            draw_ring(screen, ring)
 
         for particle in particles:
             alpha = max(0, min(255, int(255 * particle["life"])))
