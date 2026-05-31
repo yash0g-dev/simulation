@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+from pathlib import Path
 from pygame.math import Vector2
 
 # =====================================================
@@ -19,11 +20,62 @@ CENTER = Vector2(WIDTH // 2, HEIGHT // 2)
 # =====================================================
 # SOUND
 # =====================================================
-try:
-    bounce_sound = pygame.mixer.Sound("sounds/sound.mp3")
-except Exception:
-    print("Warning: 'sounds/sound.mp3' not found. Running without sound.")
-    bounce_sound = None
+SOUND_SEQUENCE_DIR = Path("./sounds/contrabassoon_soft_1s/")
+SOUND_SEQUENCE_LOOP = False
+SONG_CLIP_STEP_SECONDS = 0.2
+SONG_END_SPEED_BOOST = 0.75
+SOUND_EXTENSIONS = {".wav", ".mp3", ".ogg"}
+
+sound_paths = sorted(
+    path
+    for path in SOUND_SEQUENCE_DIR.iterdir()
+    if path.is_file() and path.suffix.lower() in SOUND_EXTENSIONS
+) if SOUND_SEQUENCE_DIR.exists() else []
+
+bounce_sounds = []
+for sound_path in sound_paths:
+    try:
+        bounce_sounds.append(pygame.mixer.Sound(str(sound_path)))
+    except Exception as exc:
+        print(f"Warning: could not load '{sound_path}': {exc}")
+
+if not bounce_sounds:
+    try:
+        bounce_sounds = [pygame.mixer.Sound("sounds/sound.mp3")]
+    except Exception:
+        print("Warning: no collision sounds found. Running without sound.")
+
+sound_cursor = 0.0
+last_sound_time = None
+
+
+def play_progressive_sound(volume, current_time, fill_progress):
+    global sound_cursor, last_sound_time
+
+    if not bounce_sounds:
+        return
+
+    if last_sound_time is None:
+        last_sound_time = current_time
+    else:
+        seconds_since_last_hit = max(0.0, (current_time - last_sound_time) / 1000)
+        original_song_step = seconds_since_last_hit / SONG_CLIP_STEP_SECONDS
+        late_speed_boost = 1.0 + (fill_progress ** 2) * SONG_END_SPEED_BOOST
+        sound_cursor += max(1.0, original_song_step * late_speed_boost)
+        last_sound_time = current_time
+
+    if SOUND_SEQUENCE_LOOP:
+        sound_cursor %= len(bounce_sounds)
+    else:
+        sound_cursor = min(sound_cursor, len(bounce_sounds) - 1)
+
+    sound_index = int(sound_cursor) % len(bounce_sounds)
+    if not SOUND_SEQUENCE_LOOP:
+        sound_index = min(sound_index, len(bounce_sounds) - 1)
+
+    sound = bounce_sounds[sound_index]
+    sound.set_volume(volume)
+    sound.play()
 
 # =====================================================
 # COLORS & DYNAMIC HUE
@@ -145,9 +197,7 @@ while running:
             sound_multiplier += 0.20
             volume = min(1.0, impact_speed * sound_multiplier)
             
-            if bounce_sound:
-                bounce_sound.set_volume(volume)
-                bounce_sound.play()
+            play_progressive_sound(volume, current_time, progress)
 
         # =================================================
         # END STATE (THE 52-SECOND BURST)
@@ -156,9 +206,7 @@ while running:
             game_state = "BURSTED"
             camera_shake = 50  
             
-            if bounce_sound:
-                bounce_sound.set_volume(1.0)
-                bounce_sound.play()
+            play_progressive_sound(1.0, current_time, 1.0)
 
             # 1. SPAWN BALL PARTICLES (Rainbow)
             for _ in range(500):
