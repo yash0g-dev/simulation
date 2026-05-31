@@ -20,7 +20,7 @@ CENTER = Vector2(WIDTH // 2, HEIGHT // 2)
 # =====================================================
 # SOUND
 # =====================================================
-SOUND_SEQUENCE_DIR = Path("./sounds/contrabassoon_soft_1s/")
+SOUND_SEQUENCE_DIR = Path("./sounds/sp_notes/")
 SOUND_SEQUENCE_LOOP = False
 SONG_CLIP_STEP_SECONDS = 0.2
 SONG_END_SPEED_BOOST = 0.75
@@ -174,7 +174,7 @@ while running:
             
             # A power of 4 curve means the ball stays very small for a long time, 
             # and then violently rapidly expands in the last 10 seconds!
-            target_radius = 4 + (MAX_RADIUS - 4) * (progress ** 4)
+            target_radius = 4 + (MAX_RADIUS - 4) * (progress ** 3)
             
             # Apply growth (with a tiny natural bump on impact)
             BALL_RADIUS = max(BALL_RADIUS + 0.1, target_radius)

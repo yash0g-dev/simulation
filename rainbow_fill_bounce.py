@@ -41,8 +41,9 @@ CIRCLE_RADIUS = 165
 CIRCLE_THICKNESS = 4
 BALL_RADIUS = 24
 MAX_SPEED = 1800
-ELASTICITY = 0.995
+ELASTICITY = 1.0
 SPEED_BOOST = 1.012
+BALL_GRAVITY = 1000
 
 ball_pos = Vector2(CENTER)
 ball_vel = Vector2(random.uniform(-520, 520), random.uniform(-520, 520))
@@ -55,7 +56,7 @@ if ball_vel.length() < 250:
 paint_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
 painted_cells = set()
 CELL_SIZE = 4
-FILL_TARGET = 0.985
+FILL_TARGET = 1.0
 
 fillable_cells = []
 for gy in range(0, HEIGHT, CELL_SIZE):
@@ -187,6 +188,7 @@ while running:
 
     hue = (elapsed_time * 0.09 + collision_count * 18) % 360
     if game_state == "PLAYING":
+        ball_vel.y += BALL_GRAVITY * dt
         ball_pos += ball_vel * dt
 
         direction = ball_pos - CENTER
